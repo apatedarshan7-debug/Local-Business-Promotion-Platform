@@ -1,0 +1,305 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LocalConnect | Discover Local Businesses</title>
+    <link rel="stylesheet" href="/style.css">
+
+    <link rel="stylesheet"
+          href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+</head>
+<body>
+<header class="navbar">
+    <a href="/" class="logo">Local<span>Connect</span></a>
+    <nav>
+        <a href="#shops">Explore Shops</a>
+        <a href="#add-shop">Add Your Shop</a>
+    </nav>
+</header>
+
+<section class="hero">
+    <div class="hero-content">
+        <p class="eyebrow">SUPPORT YOUR LOCAL COMMUNITY</p>
+        <h1>Discover amazing businesses <span>near you.</span></h1>
+        <p>Find local shops, restaurants and services in one place.</p>
+        <a href="#shops" class="btn">Explore Businesses</a>
+    </div>
+</section>
+
+<main class="container">
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <div class="messages">
+          {% for message in messages %}
+            <p>{{ message }}</p>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    <section id="shops" class="section">
+        <div class="section-heading">
+            <div>
+                <p class="eyebrow">THE LOCAL DIRECTORY</p>
+                <h2>Explore businesses</h2>
+            </div>
+            <span class="count">{{ businesses|length }} shops</span>
+        </div>
+
+        <div class="search-row">
+            <input id="searchInput" type="search"
+                   placeholder="Search shop name, category or location...">
+            <select id="categoryFilter" aria-label="Filter by category">
+                <option value="">All categories</option>
+                {% for business in businesses %}
+                    <option value="{{ business.category }}">
+                        {{ business.category }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="shop-grid" id="shopGrid">
+            {% for business in businesses %}
+            <article class="shop-card"
+                     data-name="{{ business.name|lower }}"
+                     data-category="{{ business.category|lower }}"
+                     data-address="{{ business.address|lower }}">
+
+                {% if business.image_url %}
+                    <img class="shop-image"
+                         src="{{ business.image_url }}"
+                         alt="{{ business.name }}"
+                         loading="lazy"
+                         onerror="this.style.display='none'">
+                {% else %}
+                    <div class="shop-placeholder">🏪</div>
+                {% endif %}
+
+                <div class="shop-content">
+                    <span class="category">{{ business.category }}</span>
+                    <h3>{{ business.name }}</h3>
+                    <p class="description">
+                        {{ business.description or "Discover this local business." }}
+                    </p>
+                    <p class="address">📍 {{ business.address }}</p>
+
+                    <a class="btn map-btn"
+                       href="https://www.google.com/maps/search/?api=1&query={{ business.latitude }},{{ business.longitude }}"
+                       target="_blank" rel="noopener noreferrer">
+                       Open in Google Maps ↗
+                    </a>
+
+                    <form class="delete-form"
+                          action="{{ url_for('delete_business', business_id=business.id) }}"
+                          method="POST"
+                          onsubmit="return confirm('Delete this shop? This cannot be undone.')">
+                        <button class="delete-btn" type="submit">
+                            Delete listing
+                        </button>
+                    </form>
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+
+        <p id="noResults" class="empty-state"
+           {% if businesses %}hidden{% endif %}>
+            No businesses found. Try another search or add a shop!
+        </p>
+    </section>
+
+    <section id="add-shop" class="section add-section">
+        <div class="section-heading">
+            <div>
+                <p class="eyebrow">GROW YOUR BUSINESS</p>
+                <h2>Add your shop</h2>
+                <p>Help customers discover your business.</p>
+            </div>
+        </div>
+
+        <form action="/add" method="POST" class="business-form">
+            <div class="form-grid">
+                <div>
+                    <label for="name">Shop name *</label>
+                    <input id="name" name="name" maxlength="150"
+                           placeholder="e.g. Sunrise Bakery" required>
+                </div>
+
+                <div>
+                    <label for="category">Category *</label>
+                    <select id="category" name="category" required>
+                        <option value="">Select category</option>
+                        <option>Restaurant</option>
+                        <option>Grocery</option>
+                        <option>Clothing</option>
+                        <option>Electronics</option>
+                        <option>Salon</option>
+                        <option>Cafe</option>
+                        <option>Medical</option>
+                        <option>Education</option>
+                        <option>Services</option>
+                        <option>Other</option>
+                    </select>
+                </div>
+
+                <div class="full-width">
+                    <label for="address">Full address *</label>
+                    <input id="address" name="address" maxlength="255"
+                           placeholder="Street, area, city" required>
+                </div>
+
+                <div class="full-width">
+                    <label for="description">Description</label>
+                    <textarea id="description" name="description" rows="3"
+                              placeholder="Tell customers about your shop"></textarea>
+                </div>
+
+                <div class="full-width">
+                    <label for="image_url">Shop image URL (optional)</label>
+                    <input id="image_url" name="image_url" type="url"
+                           placeholder="https://example.com/shop.jpg">
+                </div>
+            </div>
+
+            <div class="map-heading">
+                <label>Choose your shop location *</label>
+                <p>Click the map or drag the marker to your shop.</p>
+                <button type="button" id="locateBtn" class="secondary-btn">
+                    Use my current location
+                </button>
+            </div>
+
+            <div id="map"></div>
+
+            <div class="coordinates">
+                <div>
+                    <label for="latitude">Latitude</label>
+                    <input id="latitude" name="latitude" readonly required>
+                </div>
+                <div>
+                    <label for="longitude">Longitude</label>
+                    <input id="longitude" name="longitude" readonly required>
+                </div>
+            </div>
+
+            <button type="submit" class="btn submit-btn">Add Business</button>
+        </form>
+    </section>
+</main>
+
+<footer>
+    <a href="/" class="logo">Local<span>Connect</span></a>
+    <p>Discover local. Support local.</p>
+</footer>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+  
+    const searchInput = document.getElementById("searchInput");
+    const categoryFilter = document.getElementById("categoryFilter");
+    const cards = Array.from(document.querySelectorAll(".shop-card"));
+    const noResults = document.getElementById("noResults");
+
+    const categorySelect = document.getElementById("categoryFilter");
+    const seenCategories = new Set();
+
+    Array.from(categorySelect.options).forEach((option, index) => {
+        if (index === 0) return;
+        const value = option.value.toLowerCase();
+        if (seenCategories.has(value)) {
+            option.remove();
+        } else {
+            seenCategories.add(value);
+        }
+    });
+
+    function filterShops() {
+        const term = searchInput.value.trim().toLowerCase();
+        const category = categoryFilter.value.toLowerCase();
+        let visible = 0;
+
+        cards.forEach(card => {
+            const matchesText =
+                card.dataset.name.includes(term) ||
+                card.dataset.category.includes(term) ||
+                card.dataset.address.includes(term);
+
+            const matchesCategory =
+                !category || card.dataset.category === category;
+
+            const show = matchesText && matchesCategory;
+            card.hidden = !show;
+            if (show) visible++;
+        });
+
+        noResults.hidden = visible !== 0;
+    }
+
+    searchInput.addEventListener("input", filterShops);
+    categoryFilter.addEventListener("change", filterShops);
+
+
+    const defaultLocation = [19.0760, 72.8777];
+
+    const map = L.map("map").setView(defaultLocation, 12);
+
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+    }).addTo(map);
+
+    let marker;
+
+    const latitudeInput = document.getElementById("latitude");
+    const longitudeInput = document.getElementById("longitude");
+
+    function setLocation(lat, lng) {
+        latitudeInput.value = Number(lat).toFixed(7);
+        longitudeInput.value = Number(lng).toFixed(7);
+
+        if (!marker) {
+            marker = L.marker([lat, lng], { draggable: true }).addTo(map);
+
+            marker.on("dragend", function () {
+                const point = marker.getLatLng();
+                setLocation(point.lat, point.lng);
+            });
+        } else {
+            marker.setLatLng([lat, lng]);
+        }
+    }
+
+    map.on("click", function (event) {
+        setLocation(event.latlng.lat, event.latlng.lng);
+    });
+
+    setLocation(defaultLocation[0], defaultLocation[1]);
+
+    document.getElementById("locateBtn").addEventListener("click", function () {
+        if (!navigator.geolocation) {
+            alert("Location is not supported by this browser.");
+            return;
+        }
+
+        navigator.geolocation.getCurrentPosition(
+            position => {
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+
+                map.setView([lat, lng], 16);
+                setLocation(lat, lng);
+            },
+            () => alert("Location unavailable. Allow location access or select the point on the map."),
+            { enableHighAccuracy: true, timeout: 10000 }
+        );
+    });
+
+  
+    document.querySelector('a[href="#add-shop"]').addEventListener("click", () => {
+        setTimeout(() => map.invalidateSize(), 200);
+    });
+</script>
+</body>
+</html>
